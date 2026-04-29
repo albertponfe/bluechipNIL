@@ -1,0 +1,25 @@
+name: Keep Supabase project alive
+
+# Pings the Supabase keep-alive Edge Function every 6 hours so the
+# Free tier project does not auto-pause after 7 days of inactivity.
+#
+# Required GitHub secrets:
+#   SUPABASE_FUNCTION_URL  e.g. https://abcd1234.supabase.co/functions/v1
+#   SUPABASE_ANON_KEY      project public anon key
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:         # also runnable manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit keep-alive Edge Function
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.SUPABASE_FUNCTION_URL }}/keep-alive"
+          echo
+          echo "Keep-alive ping succeeded."

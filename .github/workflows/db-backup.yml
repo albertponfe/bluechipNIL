@@ -1,0 +1,74 @@
+name: Nightly DB backup to Cloudflare R2
+
+# Dumps the Supabase Postgres database every night at 03:00 UTC and uploads
+# the gzipped dump to a Cloudflare R2 bucket. Keeps the most recent 14 dumps.
+#
+# Required GitHub secrets:
+#   SUPABASE_DB_URL        full connection string (use the SESSION POOLER URL,
+#                          port 5432 — found at Supabase Dashboard →
+#                          Project Settings → Database → "Session pooler")
+#                          Format:
+#                            postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+#
+#   R2_ACCESS_KEY_ID       Cloudflare R2 API token: Access Key ID
+#   R2_SECRET_ACCESS_KEY   Cloudflare R2 API token: Secret Access Key
+#   R2_BUCKET              R2 bucket name, e.g. bluechip-backups
+#   R2_ENDPOINT_URL        https://<account-id>.r2.cloudflarestorage.com
+
+on:
+  schedule:
+    - cron: "0 3 * * *"     # 03:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install postgresql-client-16
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+
+      - name: Set timestamp
+        id: ts
+        run: echo "ts=$(date -u +%Y%m%d_%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Dump database
+        run: |
+          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+            --no-owner \
+            --no-privileges \
+            --format=custom \
+            --file="backup-${{ steps.ts.outputs.ts }}.dump"
+          gzip "backup-${{ steps.ts.outputs.ts }}.dump"
+          ls -lh "backup-${{ steps.ts.outputs.ts }}.dump.gz"
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 cp "backup-${{ steps.ts.outputs.ts }}.dump.gz" \
+            "s3://${{ secrets.R2_BUCKET }}/db/backup-${{ steps.ts.outputs.ts }}.dump.gz" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT_URL }}"
+
+      - name: Prune to last 14 backups
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 ls "s3://${{ secrets.R2_BUCKET }}/db/" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT_URL }}" \
+            | awk '{print $4}' \
+            | sort -r \
+            | tail -n +15 \
+            | while read -r f; do
+                if [ -n "$f" ]; then
+                  aws s3 rm "s3://${{ secrets.R2_BUCKET }}/db/$f" \
+                    --endpoint-url "${{ secrets.R2_ENDPOINT_URL }}"
+                fi
+              done

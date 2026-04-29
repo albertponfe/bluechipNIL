@@ -1,0 +1,5 @@
+{
+  "name": "AthleteBank",
+  "description": "The Financial OS for the NIL Generation. Manage taxes, contracts, deal valuation, and wealth building in one place.",
+  "requestFramePermissions": ["microphone"]
+}
