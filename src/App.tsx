@@ -5,12 +5,14 @@ import {
   Navigate,
   useNavigate,
 } from 'react-router-dom';
+// useNavigate is used in OnboardingGate and AuthPage
 import { useAuth } from './contexts/AuthContext';
 import { Auth } from './components/Auth';
 import { AthleteProfileWizard } from './components/AthleteProfileWizard';
 import { BrandProfileWizard } from './components/BrandProfileWizard';
 import { Dashboard } from './components/Dashboard';
 import { AthletePortal } from './components/AthletePortal';
+import { LandingPage } from './components/LandingPage';
 import { Loader2 } from 'lucide-react';
 
 // ── Guards ───────────────────────────────────────────────────────────────────
@@ -46,20 +48,22 @@ function FullPageSpinner() {
   );
 }
 
-// ── Root redirect: send logged-in users to their dashboard ───────────────────
+// ── Root: show landing page; redirect logged-in users to their dashboard ──────
 
-function RootRedirect() {
+function RootRoute() {
   const { user, role, userDoc, loading } = useAuth();
-  const navigate = useNavigate();
 
   if (loading) return <FullPageSpinner />;
 
-  if (!user) return <Navigate to="/auth" replace />;
+  // Unauthenticated → show landing page
+  if (!user) return <LandingPage />;
 
+  // Logged in but onboarding incomplete → go finish setup
   if (userDoc && !userDoc.onboarding_complete) {
     return <Navigate to="/onboarding" replace />;
   }
 
+  // Fully onboarded → go to dashboard
   if (role === 'brand') return <Navigate to="/dashboard" replace />;
   return <Navigate to="/athlete-portal" replace />;
 }
@@ -111,7 +115,7 @@ function AuthPage() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<RootRedirect />} />
+      <Route path="/" element={<RootRoute />} />
 
       <Route path="/auth" element={<AuthPage />} />
 
