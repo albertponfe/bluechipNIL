@@ -212,17 +212,6 @@ const features: Feature[] = [
   },
 ];
 
-// ── Animated number ───────────────────────────────────────────────────────────
-
-function AnimatedStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-3xl md:text-4xl font-bold text-[#f0f0f5]">{value}</p>
-      <p className="text-sm text-[#9494a5] mt-1">{label}</p>
-    </div>
-  );
-}
-
 // ── Floating badge ────────────────────────────────────────────────────────────
 
 function FloatingBadge({ icon, text, className }: { icon: React.ReactNode; text: string; className?: string }) {
@@ -324,16 +313,6 @@ export function LandingPage() {
           </button>
 
           <p className="mt-4 text-xs text-[#9494a5]">Free to join · NCAA compliant · No hidden fees</p>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="py-16 px-6 md:px-12 border-y border-white/5">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          <AnimatedStat value="2,400+" label="Verified athletes" />
-          <AnimatedStat value="180+" label="Brand partners" />
-          <AnimatedStat value="$3.2M+" label="Deals facilitated" />
-          <AnimatedStat value="94%" label="Match satisfaction" />
         </div>
       </section>
 
@@ -474,7 +453,7 @@ export function LandingPage() {
               Start realizing<br />your value
             </h2>
             <p className="text-[#9494a5] text-lg mb-8 max-w-md mx-auto">
-              Join thousands of athletes and brands already building partnerships on BlueChipNIL.
+              Be among the first athletes and brands to build NIL partnerships on BlueChipNIL.
             </p>
             <button
               onClick={() => navigate('/auth')}
