@@ -32,6 +32,7 @@ export function Auth({ onBack }: AuthProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -69,11 +70,15 @@ export function Auth({ onBack }: AuthProps) {
         const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role } },
+          options: {
+            data: { role },
+            emailRedirectTo: window.location.origin,
+          },
         });
         if (signUpError) throw signUpError;
 
-        await refreshToken();
+        setEmailSent(true);
+        return;
       }
     } catch (err: unknown) {
       const e = err as { message?: string };
@@ -99,6 +104,40 @@ export function Auth({ onBack }: AuthProps) {
     setSignupStep('role');
     setSelectedRole(null);
   };
+
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-navy flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-white/5 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-10 border border-white/10 relative text-center"
+        >
+          <button
+            onClick={onBack}
+            className="absolute top-8 right-8 text-neutral-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest"
+          >
+            Back
+          </button>
+          <div className="w-16 h-16 bg-gold/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-gold/20">
+            <Mail className="w-8 h-8 text-gold" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">Check your email</h2>
+          <p className="text-neutral-400 text-sm mb-2">We sent a confirmation link to</p>
+          <p className="text-white font-semibold text-sm mb-6">{email}</p>
+          <p className="text-neutral-500 text-xs leading-relaxed mb-8">
+            Click the link in the email to verify your address and continue setting up your account. Check your spam folder if you don't see it.
+          </p>
+          <button
+            onClick={() => { setEmailSent(false); setIsLogin(true); }}
+            className="text-xs font-bold text-neutral-500 hover:text-white transition-colors uppercase tracking-widest"
+          >
+            Back to sign in
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center p-6">
