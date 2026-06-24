@@ -84,11 +84,15 @@ test.describe('Athlete signup flow', () => {
     // ── Onboarding wizard — Step 1: Basics ───────────────────────────────
     await page.waitForURL('**/onboarding', { timeout: 15_000 });
     await page.getByTestId('athlete-name').fill('Jane Athlete');
-    await page.getByTestId('athlete-university').fill('State University');
+    // University is now a standardized autocomplete: type a partial query,
+    // then click the matching suggestion to confirm a canonical school name.
+    await page.getByTestId('athlete-university').fill('Ohio State');
+    await page.getByTestId('athlete-university-option-Ohio State').click();
     await page.getByRole('button', { name: /continue/i }).click();
 
     // ── Onboarding wizard — Step 2: Sport ────────────────────────────────
-    await page.getByTestId('athlete-sport').fill('Basketball');
+    // Sport is now a standardized dropdown.
+    await page.getByTestId('athlete-sport').selectOption('Basketball');
     await page.getByTestId('athlete-year').selectOption('Junior');
     await page.getByRole('button', { name: /continue/i }).click();
 
@@ -125,7 +129,7 @@ test.describe('Athlete signup flow', () => {
     const athleteFields = await getFirestoreDoc('athletes', uid!);
     expect((athleteFields.name as { stringValue: string })?.stringValue).toBe('Jane Athlete');
     expect((athleteFields.sport as { stringValue: string })?.stringValue).toBe('Basketball');
-    expect((athleteFields.university as { stringValue: string })?.stringValue).toBe('State University');
+    expect((athleteFields.university as { stringValue: string })?.stringValue).toBe('Ohio State');
 
     // ── Verify custom claim role == "athlete" ─────────────────────────────
     const claims = await getAuthClaims(uid!);

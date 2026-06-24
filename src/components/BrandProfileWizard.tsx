@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { auth, db, doc, setDoc, updateDoc, serverTimestamp, signOut } from '../firebase';
-import { User } from 'firebase/auth';
+import { supabase, type User } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck,
@@ -63,7 +62,7 @@ export function BrandProfileWizard({ user, onComplete }: BrandProfileWizardProps
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
     } catch (err) {
       console.error('Sign out error:', err);
     }
@@ -75,26 +74,31 @@ export function BrandProfileWizard({ user, onComplete }: BrandProfileWizardProps
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const brandData = {
-        ...formData,
-        uid: user.uid,
-        email: user.email,
-        photoUrl: user.photoURL,
-        businessVerified: false,
-        rating: 0,
-        reviewCount: 0,
-        completedDealsCount: 0,
-        totalSpentCents: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+      const { legalName, displayName, website, industry, bio, city, region, country } = formData;
 
-      await setDoc(doc(db, 'brands', user.uid), brandData);
-
-      await updateDoc(doc(db, 'users', user.uid), {
-        'flags.onboardingComplete': true,
-        displayName: formData.displayName || formData.legalName,
+      const { error: brandError } = await supabase.from('brands').upsert({
+        id: user.id,
+        legal_name: legalName,
+        display_name: displayName,
+        website,
+        industry,
+        bio,
+        city,
+        region,
+        country,
+        photo_url: (user.user_metadata?.avatar_url as string) || null,
+        business_verified: false,
       });
+      if (brandError) throw brandError;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_complete: true,
+          display_name: displayName || legalName,
+        })
+        .eq('id', user.id);
+      if (profileError) throw profileError;
 
       onComplete();
     } catch (err) {

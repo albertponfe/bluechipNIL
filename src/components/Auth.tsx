@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  auth,
-  functions,
-  googleProvider,
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  httpsCallable,
-} from '../firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
   ShieldCheck,
@@ -32,8 +23,6 @@ interface AuthProps {
 type SignupStep = 'role' | 'credentials';
 type SelectedRole = 'athlete' | 'brand' | null;
 
-const ROLE_KEY = 'bluechip_pending_role';
-
 export function Auth({ onBack }: AuthProps) {
   const { refreshToken } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
@@ -48,21 +37,15 @@ export function Auth({ onBack }: AuthProps) {
     try {
       setLoading(true);
       setError(null);
-      await signInWithPopup(auth, googleProvider);
-      // For Google sign-in, role defaults to 'athlete' via onUserCreate.
-      // Users can change role in settings later.
-      await refreshToken();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (oauthError) throw oauthError;
+      // Supabase redirects the full page for OAuth, so there's nothing else to do here.
     } catch (err: unknown) {
-      const e = err as { code?: string; message?: string };
-      if (e.code === 'auth/operation-not-allowed') {
-        setError(
-          'Google login is not enabled. Please enable it in the Firebase Console under Authentication > Sign-in method.'
-        );
-      } else if (e.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in popup was closed before completing.');
-      } else {
-        setError(e.message || 'An error occurred during Google sign-in.');
-      }
+      const e = err as { message?: string };
+      setError(e.message || 'An error occurred during Google sign-in.');
     } finally {
       setLoading(false);
     }
@@ -75,52 +58,35 @@ export function Auth({ onBack }: AuthProps) {
 
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-        // Force token refresh so custom claims arrive immediately after login.
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
         await refreshToken();
       } else {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-        // Persist chosen role to localStorage so it survives any page reload
-        // during the onboarding flow.
         const role = selectedRole ?? 'athlete';
-        localStorage.setItem(ROLE_KEY, role);
 
-        // Tell the server the chosen role. This sets custom claims so the next
-        // getIdToken(true) reflects them, and patches users/{uid} if onCreate
-        // has already written it.
-        const setPendingRole = httpsCallable<{ role: string }, { success: boolean }>(
-          functions,
-          'setPendingRole'
-        );
-        await setPendingRole({ role });
+        // The chosen role rides along in user metadata; the handle_new_user
+        // Postgres trigger reads it to create the profiles row server-side.
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { role } },
+        });
+        if (signUpError) throw signUpError;
 
-        // Send Firebase's built-in verification email using the platform template.
-        await sendEmailVerification(cred.user);
-
-        // Pull the fresh token so the app gets the role claim right away.
         await refreshToken();
-
-        localStorage.removeItem(ROLE_KEY);
       }
     } catch (err: unknown) {
-      const e = err as { code?: string; message?: string };
-      if (e.code === 'auth/operation-not-allowed') {
-        setError(
-          'Email/Password login is not enabled. Please enable it in the Firebase Console under Authentication > Sign-in method.'
-        );
-      } else if (e.code === 'auth/email-already-in-use') {
+      const e = err as { message?: string };
+      const msg = e.message || 'An error occurred during authentication.';
+      if (/already registered/i.test(msg)) {
         setError('An account with this email already exists. Please log in instead.');
         setIsLogin(true);
-      } else if (
-        e.code === 'auth/invalid-credential' ||
-        e.code === 'auth/wrong-password'
-      ) {
+      } else if (/invalid login credentials/i.test(msg)) {
         setError('Invalid email or password. Please try again.');
-      } else if (e.code === 'auth/weak-password') {
+      } else if (/password/i.test(msg) && /6/i.test(msg)) {
         setError('Password should be at least 6 characters.');
       } else {
-        setError(e.message || 'An error occurred during authentication.');
+        setError(msg);
       }
     } finally {
       setLoading(false);

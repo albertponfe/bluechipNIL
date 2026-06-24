@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { auth, db, doc, setDoc, updateDoc, serverTimestamp, OperationType, handleFirestoreError, signOut } from '../firebase';
-import { User } from 'firebase/auth';
+import { supabase, type User } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShieldCheck,
@@ -14,6 +13,8 @@ import {
   LogOut,
   CheckCircle,
 } from 'lucide-react';
+import { SchoolAutocomplete } from './SchoolAutocomplete';
+import { COLLEGE_SPORTS } from '../lib/collegeSports';
 
 interface AthleteProfileWizardProps {
   user: User;
@@ -36,7 +37,7 @@ export function AthleteProfileWizard({ user, onComplete }: AthleteProfileWizardP
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<AthleteFormData>({
-    name: user.displayName || '',
+    name: (user.user_metadata?.full_name as string) || '',
     university: '',
     sport: '',
     year: '',
@@ -47,7 +48,7 @@ export function AthleteProfileWizard({ user, onComplete }: AthleteProfileWizardP
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
     } catch (err) {
       console.error('Sign out error:', err);
     }
@@ -59,31 +60,26 @@ export function AthleteProfileWizard({ user, onComplete }: AthleteProfileWizardP
   const handleSubmit = async () => {
     setLoading(true);
 
-    const profileData = {
-      ...formData,
-      uid: user.uid,
-      email: user.email,
-      photoUrl: user.photoURL,
-      isVerified: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
     try {
-      // Write athlete profile document.
-      await setDoc(doc(db, 'athletes', user.uid), profileData);
-
-      // Mark onboarding complete in the server-written users/{uid} doc.
-      // This is a direct client update; Firestore rules allow it because
-      // onboardingComplete is not in the server-only deny list.
-      await updateDoc(doc(db, 'users', user.uid), {
-        'flags.onboardingComplete': true,
-        displayName: formData.name,
+      // Write the athlete profile row.
+      const { error: athleteError } = await supabase.from('athletes').upsert({
+        id: user.id,
+        ...formData,
+        photo_url: (user.user_metadata?.avatar_url as string) || null,
+        is_verified: false,
       });
+      if (athleteError) throw athleteError;
+
+      // Mark onboarding complete on the profile row.
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ onboarding_complete: true, display_name: formData.name })
+        .eq('id', user.id);
+      if (profileError) throw profileError;
 
       onComplete();
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `athletes/${user.uid}`);
+      console.error('Error saving athlete profile:', error);
     } finally {
       setLoading(false);
     }
@@ -161,15 +157,15 @@ export function AthleteProfileWizard({ user, onComplete }: AthleteProfileWizardP
                     University / School
                   </label>
                   <div className="relative">
-                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                    <input
-                      required
-                      type="text"
+                    <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500 z-10" />
+                    <SchoolAutocomplete
                       value={formData.university}
-                      onChange={(e) => patch({ university: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-gold outline-none transition-all"
-                      placeholder="State University"
-                      data-testid="athlete-university"
+                      onChange={(name) => patch({ university: name })}
+                      showIcon={false}
+                      placeholder="Start typing your school..."
+                      inputClassName="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 h-auto text-white focus-visible:border-gold focus-visible:ring-0 outline-none transition-all"
+                      className="bg-navy border-white/10"
+                      testId="athlete-university"
                     />
                   </div>
                 </div>
@@ -204,16 +200,19 @@ export function AthleteProfileWizard({ user, onComplete }: AthleteProfileWizardP
                     Sport
                   </label>
                   <div className="relative">
-                    <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                    <input
+                    <Trophy className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500 z-10" />
+                    <select
                       required
-                      type="text"
                       value={formData.sport}
                       onChange={(e) => patch({ sport: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-gold outline-none transition-all"
-                      placeholder="Basketball"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-gold outline-none transition-all appearance-none"
                       data-testid="athlete-sport"
-                    />
+                    >
+                      <option value="" disabled className="bg-navy">Select a sport</option>
+                      {COLLEGE_SPORTS.map((sport) => (
+                        <option key={sport} value={sport} className="bg-navy">{sport}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

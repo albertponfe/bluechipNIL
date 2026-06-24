@@ -1,37 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Routes,
   Route,
   Navigate,
   useNavigate,
-  useLocation,
 } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout } from './components/Layout';
 import { Auth } from './components/Auth';
-import { ContractReview } from './components/ContractReview';
-import { AthleteProfile } from './components/AthleteProfile';
-import { NILValuation } from './components/NILValuation';
-import { BrandDeals } from './components/BrandDeals';
-import { TaxAutopilot } from './components/TaxAutopilot';
-import { FinancialLiteracy } from './components/FinancialLiteracy';
-import { BrandOptimization } from './components/BrandOptimization';
-import { LandingPage } from './components/LandingPage';
 import { AthleteProfileWizard } from './components/AthleteProfileWizard';
 import { BrandProfileWizard } from './components/BrandProfileWizard';
+import { Dashboard } from './components/Dashboard';
+import { AthletePortal } from './components/AthletePortal';
 import { Loader2 } from 'lucide-react';
-
-export type Tab = 'contracts' | 'profile' | 'deals' | 'valuation' | 'tax' | 'literacy' | 'brand';
 
 // ── Guards ───────────────────────────────────────────────────────────────────
 
 /** Redirect to /auth if not logged in; otherwise render children. */
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) return <FullPageSpinner />;
-  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+  if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
@@ -43,7 +32,7 @@ function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const { userDoc, loading } = useAuth();
 
   if (loading) return <FullPageSpinner />;
-  if (userDoc && !userDoc.flags.onboardingComplete) {
+  if (userDoc && !userDoc.onboarding_complete) {
     return <Navigate to="/onboarding" replace />;
   }
   return <>{children}</>;
@@ -51,8 +40,8 @@ function RequireOnboarding({ children }: { children: React.ReactNode }) {
 
 function FullPageSpinner() {
   return (
-    <div className="flex items-center justify-center h-screen bg-navy">
-      <Loader2 className="w-10 h-10 animate-spin text-gold" />
+    <div className="flex items-center justify-center h-screen bg-background">
+      <Loader2 className="w-10 h-10 animate-spin text-primary" />
     </div>
   );
 }
@@ -65,61 +54,14 @@ function RootRedirect() {
 
   if (loading) return <FullPageSpinner />;
 
-  if (!user) return <LandingPage onLogin={() => navigate('/auth')} />;
+  if (!user) return <Navigate to="/auth" replace />;
 
-  if (userDoc && !userDoc.flags.onboardingComplete) {
+  if (userDoc && !userDoc.onboarding_complete) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (role === 'brand') return <Navigate to="/brand-dashboard" replace />;
-  return <Navigate to="/athlete-dashboard" replace />;
-}
-
-// ── Athlete dashboard (existing tab-based UX) ────────────────────────────────
-
-function AthleteDashboard() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('tax');
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
-
-  if (!user) return null;
-
-  return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} user={user}>
-      {activeTab === 'contracts' && <ContractReview user={user} />}
-      {activeTab === 'profile' && (
-        <AthleteProfile user={user} profile={profile} setProfile={setProfile} />
-      )}
-      {activeTab === 'deals' && <BrandDeals user={user} profile={profile} />}
-      {activeTab === 'valuation' && <NILValuation user={user} profile={profile} />}
-      {activeTab === 'tax' && <TaxAutopilot user={user} profile={profile} />}
-      {activeTab === 'literacy' && <FinancialLiteracy user={user} profile={profile} />}
-      {activeTab === 'brand' && <BrandOptimization user={user} profile={profile} />}
-    </Layout>
-  );
-}
-
-// ── Brand dashboard ───────────────────────────────────────────────────────────
-
-function BrandDashboard() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('deals');
-
-  if (!user) return null;
-
-  // Brands share the Layout wrapper for a consistent chrome, but only see
-  // deal- and brand-relevant tabs. Athlete-only tabs redirect to deals.
-  const brandTab = (['deals', 'brand', 'contracts'] as Tab[]).includes(activeTab)
-    ? activeTab
-    : 'deals';
-
-  return (
-    <Layout activeTab={brandTab} setActiveTab={setActiveTab} user={user}>
-      {brandTab === 'contracts' && <ContractReview user={user} />}
-      {brandTab === 'deals' && <BrandDeals user={user} profile={null} />}
-      {brandTab === 'brand' && <BrandOptimization user={user} profile={null} />}
-    </Layout>
-  );
+  if (role === 'brand') return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/athlete-portal" replace />;
 }
 
 // ── Onboarding gate ───────────────────────────────────────────────────────────
@@ -131,12 +73,12 @@ function OnboardingGate() {
   if (!user) return null;
 
   // If onboarding is already done, send to the correct dashboard.
-  if (userDoc?.flags.onboardingComplete) {
-    return <Navigate to={role === 'brand' ? '/brand-dashboard' : '/athlete-dashboard'} replace />;
+  if (userDoc?.onboarding_complete) {
+    return <Navigate to={role === 'brand' ? '/dashboard' : '/athlete-portal'} replace />;
   }
 
   const handleComplete = () => {
-    navigate(role === 'brand' ? '/brand-dashboard' : '/athlete-dashboard', { replace: true });
+    navigate(role === 'brand' ? '/dashboard' : '/athlete-portal', { replace: true });
   };
 
   if (role === 'brand') {
@@ -155,10 +97,10 @@ function AuthPage() {
 
   // Already signed in → skip auth screen.
   if (user) {
-    if (userDoc && !userDoc.flags.onboardingComplete) {
+    if (userDoc && !userDoc.onboarding_complete) {
       return <Navigate to="/onboarding" replace />;
     }
-    return <Navigate to={role === 'brand' ? '/brand-dashboard' : '/athlete-dashboard'} replace />;
+    return <Navigate to={role === 'brand' ? '/dashboard' : '/athlete-portal'} replace />;
   }
 
   return <Auth onBack={() => navigate('/', { replace: true })} />;
@@ -183,22 +125,22 @@ export default function App() {
       />
 
       <Route
-        path="/athlete-dashboard"
+        path="/dashboard"
         element={
           <RequireAuth>
             <RequireOnboarding>
-              <AthleteDashboard />
+              <Dashboard />
             </RequireOnboarding>
           </RequireAuth>
         }
       />
 
       <Route
-        path="/brand-dashboard"
+        path="/athlete-portal"
         element={
           <RequireAuth>
             <RequireOnboarding>
-              <BrandDashboard />
+              <AthletePortal />
             </RequireOnboarding>
           </RequireAuth>
         }

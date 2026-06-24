@@ -1,34 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { auth, db, doc, getDoc, onAuthStateChanged } from '../firebase';
-import type { User } from 'firebase/auth';
+import { supabase, fetchProfile, fetchProfileWithRetry, type Profile, type User } from '../lib/supabase';
 
 export type UserRole = 'athlete' | 'brand' | 'admin';
 
-export interface UserFlags {
-  idVerified: boolean;
-  schoolVerified: boolean;
-  businessVerified: boolean;
-  onboardingComplete: boolean;
-}
-
-export interface UserDoc {
-  uid: string;
-  email: string;
-  role: UserRole;
-  activeRole: UserRole;
-  status: string;
-  displayName: string;
-  photoUrl: string;
-  flags: UserFlags;
-}
-
 interface AuthContextValue {
   user: User | null;
-  userDoc: UserDoc | null;
+  userDoc: Profile | null;
   role: UserRole | null;
-  /** True while any auth state or user-doc fetch is in flight. */
+  /** True while any auth state or profile fetch is in flight. */
   loading: boolean;
-  /** Force-refresh the ID token so new custom claims arrive, then reload userDoc. */
+  /** Re-fetch the profile row (e.g. right after onboarding writes it). */
   refreshToken: () => Promise<void>;
 }
 
@@ -40,73 +21,58 @@ const AuthContext = createContext<AuthContextValue>({
   refreshToken: async () => {},
 });
 
-async function fetchUserDoc(uid: string): Promise<UserDoc | null> {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? (snap.data() as UserDoc) : null;
-}
-
-/**
- * Retry fetching the user doc up to `maxAttempts` times with exponential back-off.
- * This handles the short window after account creation where the onCreate Cloud
- * Function hasn't finished writing users/{uid} yet.
- */
-async function fetchUserDocWithRetry(uid: string, maxAttempts = 5): Promise<UserDoc | null> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const result = await fetchUserDoc(uid);
-    if (result !== null) return result;
-    if (attempt < maxAttempts - 1) {
-      // Wait 500ms, 1s, 2s, 4s…
-      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-    }
-  }
-  return null;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userDoc, setUserDoc] = useState<UserDoc | null>(null);
+  const [userDoc, setUserDoc] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshToken = async () => {
-    const currentUser = auth.currentUser;
+    const { data } = await supabase.auth.getUser();
+    const currentUser = data.user;
     if (!currentUser) return;
 
-    // Force server round-trip to pick up the latest custom claims.
-    await currentUser.getIdToken(/* forceRefresh */ true);
-    const result = await currentUser.getIdTokenResult();
-    const claims = result.claims as { role?: UserRole };
-    setRole(claims.role ?? null);
-
-    // Retry until the onCreate Cloud Function has written the doc.
-    const freshDoc = await fetchUserDocWithRetry(currentUser.uid);
-    setUserDoc(freshDoc);
+    // Retry until the handle_new_user trigger has written the row.
+    const freshProfile = await fetchProfileWithRetry(currentUser.id);
+    setUserDoc(freshProfile);
+    setRole((freshProfile?.role as UserRole) ?? null);
   };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      setUser(fbUser);
+    let active = true;
 
-      if (fbUser) {
-        const result = await fbUser.getIdTokenResult();
-        const claims = result.claims as { role?: UserRole };
-        setRole(claims.role ?? null);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return;
+      const sessionUser = data.session?.user ?? null;
+      setUser(sessionUser);
+      if (sessionUser) {
+        const profile = await fetchProfile(sessionUser.id);
+        if (!active) return;
+        setUserDoc(profile);
+        setRole((profile?.role as UserRole) ?? null);
+      }
+      setLoading(false);
+    });
 
-        // Single fetch here — existing users always have the doc.
-        // For brand-new signups, refreshToken() (called from Auth.tsx after
-        // setPendingRole) retries with back-off until the onCreate Cloud
-        // Function has finished writing users/{uid}.
-        const userRecord = await fetchUserDoc(fbUser.uid);
-        setUserDoc(userRecord);
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+
+      if (sessionUser) {
+        const profile = await fetchProfile(sessionUser.id);
+        setUserDoc(profile);
+        setRole((profile?.role as UserRole) ?? null);
       } else {
         setRole(null);
         setUserDoc(null);
       }
-
       setLoading(false);
     });
 
-    return unsub;
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   return (
