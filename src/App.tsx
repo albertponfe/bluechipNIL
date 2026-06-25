@@ -71,7 +71,7 @@ function RootRoute() {
 // ── Onboarding gate ───────────────────────────────────────────────────────────
 
 function OnboardingGate() {
-  const { user, role, userDoc } = useAuth();
+  const { user, role, userDoc, refreshToken } = useAuth();
   const navigate = useNavigate();
 
   if (!user) return null;
@@ -81,7 +81,8 @@ function OnboardingGate() {
     return <Navigate to={role === 'brand' ? '/dashboard' : '/athlete-portal'} replace />;
   }
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    await refreshToken();
     navigate(role === 'brand' ? '/dashboard' : '/athlete-portal', { replace: true });
   };
 
