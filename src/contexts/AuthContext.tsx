@@ -59,9 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(sessionUser);
 
       if (sessionUser) {
-        const profile = await fetchProfile(sessionUser.id);
+        // Use retry so a freshly-confirmed account has time for the trigger to commit.
+        const profile = await fetchProfileWithRetry(sessionUser.id);
         setUserDoc(profile);
-        setRole((profile?.role as UserRole) ?? null);
+        // Fall back to the role stored in user metadata (written at sign-up time)
+        // so brand users aren't treated as athletes when the profile row is delayed.
+        const metaRole = sessionUser.user_metadata?.role as UserRole | undefined;
+        setRole((profile?.role as UserRole) ?? metaRole ?? null);
       } else {
         setRole(null);
         setUserDoc(null);

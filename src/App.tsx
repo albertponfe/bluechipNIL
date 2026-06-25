@@ -76,17 +76,22 @@ function OnboardingGate() {
 
   if (!user) return null;
 
+  // If the profile row hasn't loaded yet, fall back to the role the user
+  // chose at sign-up (stored in their auth metadata).
+  const effectiveRole = role ?? (user.user_metadata?.role as string | undefined);
+  const dest = effectiveRole === 'brand' ? '/dashboard' : '/athlete-portal';
+
   // If onboarding is already done, send to the correct dashboard.
   if (userDoc?.onboarding_complete) {
-    return <Navigate to={role === 'brand' ? '/dashboard' : '/athlete-portal'} replace />;
+    return <Navigate to={dest} replace />;
   }
 
   const handleComplete = async () => {
     await refreshToken();
-    navigate(role === 'brand' ? '/dashboard' : '/athlete-portal', { replace: true });
+    navigate(dest, { replace: true });
   };
 
-  if (role === 'brand') {
+  if (effectiveRole === 'brand') {
     return <BrandProfileWizard user={user} onComplete={handleComplete} />;
   }
 
