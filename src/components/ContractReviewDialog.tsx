@@ -45,6 +45,16 @@ export function ContractReviewDialog({ open, onOpenChange, deal }: ContractRevie
         try {
             const { error } = await supabase.from('deals').update({ status: 'accepted' }).eq('id', deal.id);
             if (error) throw error;
+
+            // Notify via email after successful signing
+            await supabase.functions.invoke('send-email', {
+                body: {
+                    to: 'albertponferrada@berkeley.edu',
+                    subject: `Contract signed: ${deal.title}`,
+                    html: `<p><strong>${deal.athlete_name ?? 'An athlete'}</strong> signed the deal "<strong>${deal.title}</strong>" with ${deal.brand_name} for $${deal.amount.toLocaleString()}.</p>`,
+                },
+            });
+
             onOpenChange(false);
         } catch (e) {
             console.error('Error signing deal:', e);

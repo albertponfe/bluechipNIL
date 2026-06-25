@@ -82,7 +82,8 @@ export function Auth({ onBack }: AuthProps) {
       }
     } catch (err: unknown) {
       const e = err as { message?: string };
-      const msg = e.message || 'An error occurred during authentication.';
+      const raw = typeof e?.message === 'string' && e.message.trim() ? e.message : null;
+      const msg = raw || 'Something went wrong. Please try again.';
       if (/already registered/i.test(msg)) {
         setError('An account with this email already exists. Please log in instead.');
         setIsLogin(true);
@@ -90,6 +91,8 @@ export function Auth({ onBack }: AuthProps) {
         setError('Invalid email or password. Please try again.');
       } else if (/password/i.test(msg) && /6/i.test(msg)) {
         setError('Password should be at least 6 characters.');
+      } else if (/smtp|email|sending/i.test(msg) || !raw) {
+        setError('Could not send confirmation email. Please try again in a moment.');
       } else {
         setError(msg);
       }
