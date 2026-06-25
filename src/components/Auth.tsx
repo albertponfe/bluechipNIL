@@ -157,10 +157,12 @@ export function Auth({ onBack }: AuthProps) {
         </button>
 
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gold rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-gold/20 rotate-3">
-            <ShieldCheck className="text-navy w-10 h-10" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#3d8bff]/20" style={{ background: 'linear-gradient(135deg, #3d8bff, #00f292)' }}>
+            <ShieldCheck className="text-white w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tighter">AthleteBank</h1>
+          <h1 className="text-3xl font-bold text-white mb-2 tracking-tighter">
+            BlueChip<span className="text-[#3d8bff]">NIL</span>
+          </h1>
           <p className="text-neutral-400 text-sm font-medium uppercase tracking-widest">
             {isLogin ? 'Welcome Back' : 'Join the Generation'}
           </p>
@@ -200,7 +202,7 @@ export function Auth({ onBack }: AuthProps) {
                   data-testid="role-athlete"
                   className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
                     selectedRole === 'athlete'
-                      ? 'border-gold bg-gold/10 text-gold'
+                      ? 'border-[#00f292] bg-[#00f292]/10 text-[#00f292] shadow-lg shadow-[#00f292]/10'
                       : 'border-white/10 bg-white/5 text-neutral-400 hover:border-white/30 hover:text-white'
                   }`}
                 >
@@ -214,7 +216,7 @@ export function Auth({ onBack }: AuthProps) {
                   data-testid="role-brand"
                   className={`flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all ${
                     selectedRole === 'brand'
-                      ? 'border-gold bg-gold/10 text-gold'
+                      ? 'border-[#3d8bff] bg-[#3d8bff]/10 text-[#3d8bff] shadow-lg shadow-[#3d8bff]/10'
                       : 'border-white/10 bg-white/5 text-neutral-400 hover:border-white/30 hover:text-white'
                   }`}
                 >
@@ -254,13 +256,19 @@ export function Auth({ onBack }: AuthProps) {
               )}
 
               {!isLogin && selectedRole && (
-                <div className="mb-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 border border-gold/20">
+                <div className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-xl border ${
+                  selectedRole === 'athlete'
+                    ? 'bg-[#00f292]/10 border-[#00f292]/20'
+                    : 'bg-[#3d8bff]/10 border-[#3d8bff]/20'
+                }`}>
                   {selectedRole === 'athlete' ? (
-                    <Trophy className="w-4 h-4 text-gold" />
+                    <Trophy className="w-4 h-4 text-[#00f292]" />
                   ) : (
-                    <Briefcase className="w-4 h-4 text-gold" />
+                    <Briefcase className="w-4 h-4 text-[#3d8bff]" />
                   )}
-                  <span className="text-xs font-bold text-gold uppercase tracking-wider">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${
+                    selectedRole === 'athlete' ? 'text-[#00f292]' : 'text-[#3d8bff]'
+                  }`}>
                     Signing up as {selectedRole === 'athlete' ? 'Athlete' : 'Business'}
                   </span>
                 </div>

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Image as ImageIcon, Users, TrendingUp, Handshake, MapPin, FileCheck, LayoutDashboard, Instagram, LogOut, Loader2, UserCircle } from "lucide-react";
+import { Sparkles, Image as ImageIcon, Users, TrendingUp, Handshake, MapPin, FileCheck, LayoutDashboard, Instagram, LogOut, Loader2, UserCircle, Globe, ShieldCheck } from "lucide-react";
 import { InsightsDialog } from "./InsightsDialog";
 import { CampaignGeneratorDialog } from "./CampaignGeneratorDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -129,10 +129,8 @@ export function Dashboard() {
     return (
         <div className="flex-1 w-full bg-background text-foreground flex flex-col font-sans">
             <header className="h-[70px] px-[40px] flex items-center justify-between border-b border-border shrink-0" style={{ background: 'linear-gradient(to right, #050508, #0a0a14)' }}>
-                <div className="font-[800] text-[20px] tracking-[2px] uppercase flex items-center gap-4">
-                    <span style={{ background: 'linear-gradient(45deg, #3d8bff, #00f292)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        BLUECHIP NIL
-                    </span>
+                <div className="font-[800] text-[20px] tracking-tight flex items-center gap-4">
+                    <span className="text-white">BlueChip<span className="text-[#3d8bff]">NIL</span></span>
                 </div>
                 <div className="flex items-center gap-[12px] text-[13px]">
                     <button
@@ -329,54 +327,119 @@ export function Dashboard() {
                     </TabsContent>
 
                     <TabsContent value="profile" className="space-y-6">
-                        <Card className="bg-[#141420] border-border/50 max-w-3xl">
-                            <CardHeader>
-                                <CardTitle>Business Profile</CardTitle>
-                                <CardDescription>Update the information athletes and the marketplace see for your brand.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Display Name</label>
-                                        <Input value={brandDraft.display_name} onChange={(e) => patchBrandDraft({ display_name: e.target.value })} className="bg-black/30 border-white/10" />
+                        <div className="grid gap-6 md:grid-cols-3">
+                            {/* Brand identity card */}
+                            <div className="md:col-span-1 space-y-4">
+                                <Card className="bg-[#141420] border-border/50 overflow-hidden">
+                                    <div className="h-24 bg-gradient-to-br from-[#3d8bff]/30 via-[#3d8bff]/10 to-[#141420]" />
+                                    <div className="-mt-10 px-5 pb-5">
+                                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#3d8bff] to-[#3d8bff]/50 flex items-center justify-center border-4 border-[#141420] shadow-lg">
+                                            <span className="text-2xl font-bold text-white">
+                                                {(brandDraft.display_name || brandDraft.legal_name || 'B').slice(0, 2).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <h2 className="text-xl font-bold text-white mt-3 leading-tight">
+                                            {brandDraft.display_name || brandDraft.legal_name || 'Your Brand'}
+                                        </h2>
+                                        {brandDraft.legal_name && brandDraft.display_name && brandDraft.legal_name !== brandDraft.display_name && (
+                                            <p className="text-xs text-muted-foreground mt-0.5">{brandDraft.legal_name}</p>
+                                        )}
+                                        {brandDraft.industry && (
+                                            <div className="mt-3">
+                                                <Badge className="bg-[#3d8bff]/15 text-[#3d8bff] border border-[#3d8bff]/30 hover:bg-[#3d8bff]/20">
+                                                    {brandDraft.industry}
+                                                </Badge>
+                                            </div>
+                                        )}
+                                        <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                            {(brandDraft.city || brandDraft.region) && (
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                                    <span>{[brandDraft.city, brandDraft.region].filter(Boolean).join(', ')}</span>
+                                                </div>
+                                            )}
+                                            {brandDraft.website && (
+                                                <div className="flex items-center gap-2">
+                                                    <Globe className="h-3.5 w-3.5 shrink-0 text-[#3d8bff]" />
+                                                    <a href={brandDraft.website} target="_blank" rel="noopener noreferrer" className="text-[#3d8bff] hover:underline truncate">
+                                                        {brandDraft.website.replace(/^https?:\/\//, '')}
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {brandDraft.bio && (
+                                            <p className="text-xs text-muted-foreground mt-4 leading-relaxed border-t border-white/5 pt-4 line-clamp-5">
+                                                {brandDraft.bio}
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Legal Name</label>
-                                        <Input value={brandDraft.legal_name} onChange={(e) => patchBrandDraft({ legal_name: e.target.value })} className="bg-black/30 border-white/10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Website</label>
-                                        <Input value={brandDraft.website} onChange={(e) => patchBrandDraft({ website: e.target.value })} placeholder="https://" className="bg-black/30 border-white/10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Industry</label>
-                                        <Input value={brandDraft.industry} onChange={(e) => patchBrandDraft({ industry: e.target.value })} className="bg-black/30 border-white/10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">City</label>
-                                        <Input value={brandDraft.city} onChange={(e) => patchBrandDraft({ city: e.target.value })} className="bg-black/30 border-white/10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Region / State</label>
-                                        <Input value={brandDraft.region} onChange={(e) => patchBrandDraft({ region: e.target.value })} className="bg-black/30 border-white/10" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Bio</label>
-                                    <Textarea
-                                        value={brandDraft.bio}
-                                        onChange={(e) => patchBrandDraft({ bio: e.target.value })}
-                                        className="bg-black/30 border-white/10 min-h-[100px]"
-                                    />
-                                </div>
-                            </CardContent>
-                            <CardFooter className="border-t border-white/5 p-4 flex items-center justify-end gap-3">
-                                {profileSaved && <span className="text-xs text-primary font-medium">Saved!</span>}
-                                <Button className="bg-primary hover:bg-primary/80 text-white font-bold" onClick={handleSaveBrandProfile} disabled={savingProfile}>
-                                    {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                                </Card>
+
+                                <Card className="bg-gradient-to-br from-[#3d8bff]/10 to-[#3d8bff]/5 border-[#3d8bff]/20">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <ShieldCheck className="h-4 w-4 text-[#3d8bff]" />
+                                            <span className="text-sm font-bold text-[#3d8bff]">Active on Marketplace</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            Your profile is visible to verified athletes. Keep your info current to attract the best matches.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Edit form */}
+                            <div className="md:col-span-2">
+                                <Card className="bg-[#141420] border-border/50">
+                                    <CardHeader>
+                                        <CardTitle>Profile Details</CardTitle>
+                                        <CardDescription>Update the information athletes and the marketplace see for your brand.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Display Name</label>
+                                                <Input value={brandDraft.display_name} onChange={(e) => patchBrandDraft({ display_name: e.target.value })} className="bg-black/30 border-white/10" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Legal Name</label>
+                                                <Input value={brandDraft.legal_name} onChange={(e) => patchBrandDraft({ legal_name: e.target.value })} className="bg-black/30 border-white/10" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Website</label>
+                                                <Input value={brandDraft.website} onChange={(e) => patchBrandDraft({ website: e.target.value })} placeholder="https://" className="bg-black/30 border-white/10" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Industry</label>
+                                                <Input value={brandDraft.industry} onChange={(e) => patchBrandDraft({ industry: e.target.value })} className="bg-black/30 border-white/10" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">City</label>
+                                                <Input value={brandDraft.city} onChange={(e) => patchBrandDraft({ city: e.target.value })} className="bg-black/30 border-white/10" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Region / State</label>
+                                                <Input value={brandDraft.region} onChange={(e) => patchBrandDraft({ region: e.target.value })} className="bg-black/30 border-white/10" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Bio</label>
+                                            <Textarea
+                                                value={brandDraft.bio}
+                                                onChange={(e) => patchBrandDraft({ bio: e.target.value })}
+                                                className="bg-black/30 border-white/10 min-h-[100px]"
+                                            />
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="border-t border-white/5 p-4 flex items-center justify-end gap-3">
+                                        {profileSaved && <span className="text-xs text-[#3d8bff] font-medium">Saved!</span>}
+                                        <Button className="bg-[#3d8bff] hover:bg-[#3d8bff]/80 text-white font-bold" onClick={handleSaveBrandProfile} disabled={savingProfile}>
+                                            {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            </div>
+                        </div>
                     </TabsContent>
                 </Tabs>
 

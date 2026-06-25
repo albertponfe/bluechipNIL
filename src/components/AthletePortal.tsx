@@ -172,10 +172,8 @@ export function AthletePortal() {
     return (
         <div className="flex-1 w-full bg-[#050508] text-foreground flex flex-col font-sans">
             <header className="h-[70px] px-[40px] flex items-center justify-between border-b border-border shrink-0 bg-[#0a0a14]">
-                <div className="font-[800] text-[20px] tracking-[2px] uppercase flex items-center gap-4">
-                    <span style={{ background: 'linear-gradient(45deg, #00f292, #3d8bff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        BLUECHIP ATHLETE
-                    </span>
+                <div className="font-[800] text-[20px] tracking-tight flex items-center gap-4">
+                    <span className="text-white">BlueChip<span className="text-[#3d8bff]">NIL</span></span>
                 </div>
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-white">
